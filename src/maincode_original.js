@@ -381,14 +381,16 @@ playerCommand = (playerId, cmd) => {
       Math.round(p1[2]),
     ];
 
-    const lastCurve = st.lastCurve ?? null;
+    const lastCurve = st.lastCurve;
 
-    const Pn_1  = lastCurve.points.at(-1);
-    const Pn1_1 = lastCurve.points.at(-2);
+    let Pn_1, Pn1_1, Pn_2, Pn1_2;
+    if (lastCurve) {
+      Pn_1  = lastCurve.points.at(-1);
+      Pn1_1 = lastCurve.points.at(-2);
 
-    const Pn_2 = lastCurve.points.at(0);
-    const Pn1_2 = lastCurve.points.at(1);
-
+      Pn_2  = lastCurve.points.at(0);
+      Pn1_2 = lastCurve.points.at(1);
+    }
     const placeBlock = (x, y, z, blockId) => {
       const k =
         (x & 1023) |
@@ -413,58 +415,59 @@ playerCommand = (playerId, cmd) => {
           api.sendMessage(playerId, "曲線生成・設置完了");
           st.lastCurve = curve;
           st.controlPoints = [];
-          const makeEndpoint = (t) => {
-            const p = curve.getPoint(t);
-            const [tx, ty, tz] = curve.getTangent(t);
-            const l = Math.hypot(tx, ty, tz) || 1;
 
-            return {
-              pos: [
-                Math.round(p[0]),
-                Math.round(p[1]),
-                Math.round(p[2])
-              ],
-              dir: [tx / l, ty / l, tz / l],
+          if (lastCurve) {
+            const makeEndpoint = (t) => {
+              const p = curve.getPoint(t);
+              const [tx, ty, tz] = curve.getTangent(t);
+              const l = Math.hypot(tx, ty, tz) || 1;
+
+              return {
+                pos: [
+                  Math.round(p[0]),
+                  Math.round(p[1]),
+                  Math.round(p[2])
+                ],
+                dir: [tx / l, ty / l, tz / l],
+              };
             };
-          };
-          api.setBlock(startCenterPos, "Lucky Block");
-          api.setBlock(endCenterPos, "Lucky Block");
-          api.setBlockData(...startCenterPos, {
-            persisted: {
-              shared: {
-                snap: makeEndpoint(0),
-                handleLen: curve.getEndHandleLength(),
-                endHandle: [
-                  Pn_2[0] - Pn1_2[0],
-                  Pn_2[1] - Pn1_2[1],
-                  Pn_2[2] - Pn1_2[2],
-                ]
+
+            api.setBlockData(...startCenterPos, {
+              persisted: {
+                shared: {
+                  snap: makeEndpoint(0),
+                  handleLen: curve.getEndHandleLength(),
+                  endHandle: [
+                    Pn_2[0] - Pn1_2[0],
+                    Pn_2[1] - Pn1_2[1],
+                    Pn_2[2] - Pn1_2[2],
+                  ]
+                }
               }
-            }
-          });
-          api.setBlockData(...endCenterPos, {
-            persisted: {
-              shared: {
-                snap: makeEndpoint(1),
-                handleLen: curve.getEndHandleLength(),
-                endHandle: [
-                  Pn_1[0] - Pn1_1[0],
-                  Pn_1[1] - Pn1_1[1],
-                  Pn_1[2] - Pn1_1[2],
-                ]
+            });
+            api.setBlockData(...endCenterPos, {
+              persisted: {
+                shared: {
+                  snap: makeEndpoint(1),
+                  handleLen: curve.getEndHandleLength(),
+                  endHandle: [
+                    Pn_1[0] - Pn1_1[0],
+                    Pn_1[1] - Pn1_1[1],
+                    Pn_1[2] - Pn1_1[2],
+                  ]
+                }
               }
-            }
-          });
+            });
+          }
+
           return;
         }
 
         const currPoint = curve.getPoint(t);
         const [tx, ty, tz] = curve.getTangent(t);
-
         const l = Math.hypot(tx, ty, tz) || 1;
         const nx = tx / l;
         const nz = tz / l;
-
         const sx = -nz;
         const sz =  nx;
 
@@ -492,3 +495,4 @@ playerCommand = (playerId, cmd) => {
     return true;
   }
 };
+
