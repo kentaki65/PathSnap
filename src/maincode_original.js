@@ -286,9 +286,7 @@ onPlayerClick = (playerId, wasAltClick, x, y, z, blockName) => {
 
     const pos = [x, y, z];
     if (!st.controlPoints) st.controlPoints = [];
-    const snap = getSnapFromBlock(x,y,z);
-
-    if(wasAltClick && !pos.some(v => v === undefined)){
+    if(wasAltClick && pos.some(v => v !== undefined)){
       const snap = getSnapFromBlock(x,y,z);
       if(snap !== null){
         applySnap(playerId, x, y, z, snap);
@@ -495,4 +493,3 @@ playerCommand = (playerId, cmd) => {
     return true;
   }
 };
-
