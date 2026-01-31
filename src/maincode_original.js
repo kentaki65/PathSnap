@@ -1,6 +1,5 @@
 //MIT License
 //Copyright (c) 2026 kentaki65
-
 S={t:{},g:{},c:0,o:0,i:0,d:{get false(){let t=S.t[S.c];do{let e=3*S.i;[t[e],S=>S][+(t[e+2]<S.g[t[e+1]])]()}while(++S.i<t.length/3);delete S.t[S.c],S.i=0}},run(t,e,l){let c=S.c-~e-1,g=S.t[c]=[S.t[c],[]][+!S.t[c]],i=g.length;g[i]=t,g[i+1]=[l,"0"][+!l],g[i+2]=S.o++},stop(t){S.g[t]=S.o++}};
 tick=()=>{S.d[!S.t[S.c]];S.c++;}
 
@@ -197,7 +196,7 @@ function applySnap(playerId, bx, by, bz, snap) {
     ];
   } else {
     const dir = snap.dir;
-    const len = snap.handleLen ?? curve.getEndHandleLength();
+    const len = snap.handleLen ?? st.curve?.getEndHandleLength() ?? 1;
     handle = [dir[0] * len, dir[1] * len, dir[2] * len];
   }
 
@@ -456,6 +455,8 @@ playerCommand = (playerId, cmd) => {
                 }
               }
             });
+		 	api.setBlock(startCenterPos, "Lucky Block");
+			api.setBlock(endCenterPos, "Lucky Block");
           }
 
           return;
