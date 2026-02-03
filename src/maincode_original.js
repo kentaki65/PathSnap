@@ -1,5 +1,3 @@
-//MIT License
-//Copyright (c) 2026 kentaki65
 S={t:{},g:{},c:0,o:0,i:0,d:{get false(){let t=S.t[S.c];do{let e=3*S.i;[t[e],S=>S][+(t[e+2]<S.g[t[e+1]])]()}while(++S.i<t.length/3);delete S.t[S.c],S.i=0}},run(t,e,l){let c=S.c-~e-1,g=S.t[c]=[S.t[c],[]][+!S.t[c]],i=g.length;g[i]=t,g[i+1]=[l,"0"][+!l],g[i+2]=S.o++},stop(t){S.g[t]=S.o++}};
 tick=()=>{S.d[!S.t[S.c]];S.c++;}
 
@@ -170,50 +168,52 @@ function rebuildSection(playerId, st) {
 
 function getSnapFromBlock(x, y, z) {
   const bd = api.getBlockData(x, y, z);
-  return bd?.persisted?.shared?.snap ?? null;
+  return bd?.persisted?.shared?.curve ?? null;
 }
 
-function applySnap(playerId, bx, by, bz, snap) {
+function applySnap(playerId, bx, by, bz, curveData) {
   const st = pathState.get(playerId);
-  if (!st) return;
+  if (!st || !curveData?.points) return;
+
+  const points = curveData.points;
+  if (points.length < 2) return;
+
+  const isEnd = curveData.isEnd === true;
+
+  const pBase = isEnd ? points.at(-1) : points[0];
+  const pPrev = isEnd ? points.at(-2) : points[1];
+
+  const dir = [
+    pBase[0] - pPrev[0],
+    pBase[1] - pPrev[1],
+    pBase[2] - pPrev[2],
+  ];
+
+  const len = Math.hypot(...dir) || 1;
+  const n = dir.map(v => v / len);
 
   const cx = bx + 0.5;
   const cy = by + 0.5;
   const cz = bz + 0.5;
 
-  const cps = st.controlPoints;
-  cps.length = 0;
+  st.controlPoints.length = 0;
 
   const p0 = [cx, cy, cz];
-
-  let handle;
-
-  if (snap.endHandle) {
-    handle = [
-      -snap.endHandle[0],
-      -snap.endHandle[1],
-      -snap.endHandle[2],
-    ];
-  } else {
-    const dir = snap.dir;
-    const len = snap.handleLen ?? st.curve?.getEndHandleLength() ?? 1;
-    handle = [dir[0] * len, dir[1] * len, dir[2] * len];
-  }
-
   const p1 = [
-    p0[0] + handle[0],
-    p0[1] + handle[1],
-    p0[2] + handle[2],
+    cx + n[0] * len,
+    cy + n[1] * len,
+    cz + n[2] * len,
   ];
 
-  cps.push(p0, p1);
-
-  st.curve = new BezierCurve(cps);
+  st.controlPoints.push(p0, p1);
+  st.curve = new BezierCurve(st.controlPoints);
   st.awaitingNextPoint = true;
 
-  api.sendMessage(playerId, "前の曲線と連続スナップしました");
+  api.sendMessage(
+    playerId,
+    isEnd ? "終点からスナップしました" : "始点からスナップしました"
+  );
 }
-
 
 class BezierCurve {
   constructor(points) {
@@ -378,16 +378,6 @@ playerCommand = (playerId, cmd) => {
       Math.round(p1[2]),
     ];
 
-    const lastCurve = st.lastCurve;
-
-    let Pn_1, Pn1_1, Pn_2, Pn1_2;
-    if (lastCurve) {
-      Pn_1  = lastCurve.points.at(-1);
-      Pn1_1 = lastCurve.points.at(-2);
-
-      Pn_2  = lastCurve.points.at(0);
-      Pn1_2 = lastCurve.points.at(1);
-    }
     const placeBlock = (x, y, z, blockId) => {
       const k =
         (x & 1023) |
@@ -410,55 +400,28 @@ playerCommand = (playerId, cmd) => {
       for (let n = 0; n < STEPS_PER_TICK; n++) {
         if (t > 1) {
           api.sendMessage(playerId, "曲線生成・設置完了");
-          st.lastCurve = curve;
           st.controlPoints = [];
-
-          if (lastCurve) {
-            const makeEndpoint = (t) => {
-              const p = curve.getPoint(t);
-              const [tx, ty, tz] = curve.getTangent(t);
-              const l = Math.hypot(tx, ty, tz) || 1;
-
-              return {
-                pos: [
-                  Math.round(p[0]),
-                  Math.round(p[1]),
-                  Math.round(p[2])
-                ],
-                dir: [tx / l, ty / l, tz / l],
-              };
-            };
-
-            api.setBlockData(...startCenterPos, {
-              persisted: {
-                shared: {
-                  snap: makeEndpoint(0),
-                  handleLen: curve.getEndHandleLength(),
-                  endHandle: [
-                    Pn_2[0] - Pn1_2[0],
-                    Pn_2[1] - Pn1_2[1],
-                    Pn_2[2] - Pn1_2[2],
-                  ]
+          api.setBlockData(...startCenterPos, {
+            persisted: {
+              shared: {
+                curve: {
+                  isEnd: false,
+                  points: curve.points.map(p => [...p])
                 }
               }
-            });
-            api.setBlockData(...endCenterPos, {
-              persisted: {
-                shared: {
-                  snap: makeEndpoint(1),
-                  handleLen: curve.getEndHandleLength(),
-                  endHandle: [
-                    Pn_1[0] - Pn1_1[0],
-                    Pn_1[1] - Pn1_1[1],
-                    Pn_1[2] - Pn1_1[2],
-                  ]
+            }
+          });
+
+          api.setBlockData(...endCenterPos, {
+            persisted: {
+              shared: {
+                curve: {
+                  isEnd: true,
+                  points: curve.points.map(p => [...p])
                 }
               }
-            });
-		 	api.setBlock(startCenterPos, "Lucky Block");
-			api.setBlock(endCenterPos, "Lucky Block");
-          }
-
+            }
+          });
           return;
         }
 
