@@ -366,16 +366,16 @@ playerCommand = (playerId, cmd) => {
     const p0 = curve.getPoint(0);
 
     startCenterPos = [
-      Math.round(p0[0]),
-      Math.round(p0[1]),
-      Math.round(p0[2]),
+      (p0[0]),
+      (p0[1]),
+      (p0[2]),
     ];
 
     const p1 = curve.getPoint(1);
     endCenterPos = [
-      Math.round(p1[0]),
-      Math.round(p1[1]),
-      Math.round(p1[2]),
+      (p1[0]),
+      (p1[1]),
+      (p1[2]),
     ];
 
     const placeBlock = (x, y, z, blockId) => {
@@ -401,6 +401,9 @@ playerCommand = (playerId, cmd) => {
         if (t > 1) {
           api.sendMessage(playerId, "曲線生成・設置完了");
           st.controlPoints = [];
+
+          api.setBlock(startCenterPos, "Block of Diamond");
+          api.setBlock(endCenterPos, "Block of Diamond")
           api.setBlockData(...startCenterPos, {
             persisted: {
               shared: {
@@ -439,9 +442,9 @@ playerCommand = (playerId, cmd) => {
             const [dx, dy] = key.split(",").map(Number);
             const cx = dx - dxCenter;
 
-            const wx = Math.round(x + sx * cx);
-            const wy = Math.round(y + dy);
-            const wz = Math.round(z + sz * cx);
+            const wx = (x + sx * cx);
+            const wy = (y + dy);
+            const wz = (z + sz * cx);
 
             placeBlock(wx, wy, wz, blockId);
           }
